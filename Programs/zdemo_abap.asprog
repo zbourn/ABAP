@@ -1,0 +1,366 @@
+*---Latest and Greatest features of ABAP
+REPORT zdemo_abap.
+CLASS my_class DEFINITION.
+  PUBLIC SECTION.
+    TYPES: BEGIN OF ty_adrc,
+             addrnumber TYPE adrc-addrnumber,
+             name1      TYPE adrc-name1,
+           END OF ty_adrc.
+    DATA: ls_adrc TYPE ty_adrc.
+    METHODS: get_adrc RETURNING VALUE(ls_adrc) TYPE ty_adrc,
+      return_boolean RETURNING VALUE(bool) TYPE wdy_boolean.
+ENDCLASS.
+CLASS my_class IMPLEMENTATION.
+  METHOD: get_adrc.
+    SELECT SINGLE addrnumber,
+                  name1
+    FROM adrc
+    INTO @ls_adrc.
+  ENDMETHOD.
+  METHOD return_boolean.
+    bool = abap_true.
+  ENDMETHOD.
+ENDCLASS.
+TYPES: BEGIN OF ty_data,
+         col1 TYPE string,
+         col2 TYPE string,
+       END OF ty_data.
+
+START-OF-SELECTION.
+*----Inline Data declaration
+
+  DATA(text) = 'ABC'.
+  DATA: itab TYPE TABLE OF ty_data.
+
+  LOOP AT itab INTO DATA(wa).
+
+  ENDLOOP.
+
+*---Table Expression no sy-subrc set exception raised
+  TRY.
+      DATA(wa1) = itab[ 1 ].
+      wa1 = itab[ col1 = '3' col2 = '5' ].
+
+*---Line Exists
+      IF line_exists( itab[ 1 ] ).
+
+      ENDIF.
+
+*---Get Index
+      DATA(idx) = line_index( itab[ col1 = '3' col2 = '5' ] ).
+
+    CATCH cx_sy_itab_line_not_found.
+  ENDTRY.
+
+*---Trick to avoid dump
+  ASSIGN itab[ 1 ] TO FIELD-SYMBOL(<fs_wa>).
+  IF sy-subrc EQ 0.
+
+  ENDIF.
+
+*--Conversion Operator CONV --- lets you convert to data type
+  DATA: text1 TYPE c LENGTH 255.
+*---Convert to string
+  DATA(xtr) = cl_abap_codepage=>convert_to( source = CONV string( text1 ) ).
+*---Or Let compiler decide what it wants to convert to
+  xtr = cl_abap_codepage=>convert_to( source = CONV #( text1 ) ).
+
+*--Value Operator
+  TYPES:  BEGIN OF ty_columns1, "simple STRUCTURE
+            cols1 TYPE i,
+            cols2 TYPE i,
+          END OF ty_columns1.
+
+  TYPES: BEGIN OF ty_columnns2,  "nested STRUCTURE
+           coln1 TYPE i,
+           coln2 TYPE ty_columns1,
+         END OF ty_columnns2.
+
+  DATA: struc_simple TYPE ty_columns1,
+        struc_nest   TYPE ty_columnns2.
+
+  struc_nest = VALUE #( coln1 = 5
+                       coln2-cols1 = 1
+                       coln2-cols2 = 2 ).
+
+  struc_nest = VALUE #( coln1 = 3
+                        coln2 = VALUE #( cols1 = 2 cols2 = 3 )
+                        ).
+
+  TYPES t_itab TYPE TABLE OF i WITH EMPTY KEY.
+
+  DATA itab1 TYPE t_itab.
+
+  itab1 = VALUE #( ( ) ( 1 ) ( 2 ) ( 3 ) ( 4 ) ( 5 ) ( 6 ) ).
+
+*cl_demo_output=>display( itab1 ).
+
+  DATA itab2 TYPE RANGE OF i.
+
+  itab2 = VALUE #( sign = 'I' option = 'BT' ( low = 1 high = 10 )
+                                             ( low = 2 high = 10 )
+                                             ( low = 3 high = 10 )
+                                             ( low = 4 high = 10 )
+                   option = 'GE' ( low = 61 ) ).
+
+*fill default if not found
+  TYPES:
+    BEGIN OF line,
+      id    TYPE i,
+      value TYPE string,
+    END OF line.
+  DATA:itab5 TYPE SORTED TABLE OF line WITH UNIQUE KEY id.
+
+  DATA(def) = VALUE line( id = 0 value = `not found` ).
+  DATA(result2) = VALUE #( itab5[ id = 1 ] DEFAULT def ).
+
+*cl_demo_output=>display( itab2 ).
+*---While VALUE and NEW expressions can include FOR expressions, REDUCE must include at least one FOR expression.
+*---For Operator
+  TYPES: BEGIN OF ty_ship,
+           tknum TYPE char10,     "Shipment Number
+           name  TYPE ernam,     "Name of Person who Created the Object
+           city  TYPE ort01,     "Starting city
+           route TYPE char10,     "Shipment route
+         END OF ty_ship,
+         BEGIN OF ty_city,
+           city  TYPE ort01,     "Starting city
+           route TYPE char10,
+         END OF ty_city.
+  TYPES: ty_ships TYPE SORTED TABLE OF ty_ship WITH UNIQUE KEY tknum.
+  TYPES: ty_citys TYPE STANDARD TABLE OF ty_city WITH EMPTY KEY.
+
+  DATA: gt_ships TYPE ty_ships.
+
+  gt_ships = VALUE #( ( tknum = '001' name = 'John' city = 'Melbourne' route = 'R0001' )
+                    ( tknum = '002' name = 'Gavin' city = 'Sydney' route = 'R0003' )
+                    ( tknum = '003' name = 'Lucy' city = 'Adelaide' route = 'R0001' )
+                    ( tknum = '004' name = 'Elaine' city = 'Perth' route = 'R0003' ) ).
+
+  DATA(gt_citys) = VALUE ty_citys( FOR ls_ship IN gt_ships ( city = ls_ship-city route = ls_ship-route ) ).
+
+  gt_citys = VALUE ty_citys( FOR ls_ship IN gt_ships WHERE ( route = 'R0003' ) ( city = ls_ship-city route = ls_ship-route ) ).
+
+*cl_demo_output=>display( gt_citys ).
+*---FOR with THEN and UNTIL|WHILE
+  TYPES:
+    BEGIN OF ty_line,
+      col1 TYPE i,
+      col2 TYPE i,
+      col3 TYPE i,
+    END OF ty_line,
+    ty_tab TYPE STANDARD TABLE OF ty_line WITH EMPTY KEY.
+
+  DATA(gt_itab) = VALUE ty_tab( FOR j = 1 THEN j + 10 UNTIL j > 40 ( col1 = j col2 = j + 1 col3 = j + 2 ) ).
+
+
+*--Reduction operator REDUCE
+  DATA(lv_lines) = REDUCE i( INIT x = 0 FOR wa2 IN gt_ships WHERE ( route = 'R0001' ) NEXT x = x + 1 ).
+
+  DATA(lv_sum) = REDUCE i( INIT x = 0 FOR wa3 IN itab1 NEXT x = x + wa3 ).
+  cl_demo_output=>display( lv_sum ).
+
+  TYPES outref TYPE REF TO if_demo_output.
+
+  DATA(output) = REDUCE outref( INIT out = cl_demo_output=>new( ) text2 = 'Count up:'
+                                FOR n = 1 UNTIL n > 11  NEXT out = out->write( text2 )
+                                text2 = | { n } | ).
+  output->display( ).
+
+*--Conditional operators COND and SWITCH
+CLASS cx_overflow DEFINITION INHERITING FROM cx_static_check.
+ENDCLASS.
+DATA(time) = COND string( WHEN sy-timlo < '120000' THEN | { sy-timlo TIME = ISO } AM |
+                          WHEN sy-timlo > '120000' THEN | { CONV t( sy-timlo - 12 * 3600 ) TIME = ISO } PM|
+                          WHEN sy-timlo = '120000' THEN | High Noon |
+                          ELSE THROW cx_overflow( ) ).
+
+DATA(out1) = cl_demo_output=>new( ).
+
+DO.
+  TRY.
+
+      out1->write( SWITCH string( sy-index
+                                  WHEN 1 THEN 'One'
+                                  WHEN 2 THEN 'Two'
+                                  WHEN 3 THEN 'Three'
+                                  ELSE THROW cx_overflow( ) ) ).
+    CATCH cx_overflow.
+      out1->display( ).
+      EXIT.
+  ENDTRY.
+ENDDO.
+
+*--Referencing fields within returned structures
+DATA(lv_name1) = NEW my_class( )->get_adrc( )-name1.
+*---Methods that return a type BOOLEAN NEW operator
+IF NEW my_class( )->return_boolean( ).
+
+ENDIF.
+*--Meshes Allows an association to be set up between related data groups.
+TYPES: BEGIN OF t_manager,
+         name   TYPE char10,
+         salary TYPE int4,
+       END OF t_manager,
+       tt_manager TYPE SORTED TABLE OF t_manager WITH UNIQUE KEY name.
+
+TYPES: BEGIN OF t_developer,
+         name    TYPE char10,
+         salary  TYPE int4,
+         manager TYPE char10,   "Name of manager
+       END OF t_developer,
+       tt_developer TYPE SORTED TABLE OF t_developer WITH UNIQUE KEY name.
+DATA(lt_manager) = VALUE tt_manager( ( name = 'Jason' salary = 3000 ) ( name = 'Thomas' salary = 3200 ) ).
+DATA(lt_developer) = VALUE tt_developer( ( name = 'Bob' salary = 2100 manager = 'Jason')
+                                         ( name = 'David' salary = 2100 manager = 'Thomas')
+                                         ( name = 'Jack' salary = 2100 manager = 'Thomas')
+                                         ( name = 'Jerry' salary = 2100 manager = 'Jason')
+                                         ( name = 'John' salary = 2100 manager = 'Thomas')
+                                         ( name = 'Tom' salary = 2100 manager = 'Jason') ).
+*--Get the details of Jerry’s manager and all developers managed by Thomas.
+TYPES: BEGIN OF MESH m_team,
+         managers   TYPE tt_manager ASSOCIATION my_employee TO developers ON manager = name,
+         developers TYPE tt_developer ASSOCIATION my_manager TO managers ON name = manager,
+       END OF MESH m_team.
+DATA: ls_team TYPE m_team.
+ls_team-managers = lt_manager.
+ls_team-developers = lt_developer.
+*Get details of Jerry's manager *
+"get line of dev table
+ASSIGN lt_developer[ name = 'Jerry' ] TO FIELD-SYMBOL(<ls_jerry>).
+DATA(ls_jmanager) =  ls_team-developers\my_manager[ <ls_jerry> ].
+
+WRITE: / |Jerry's manager: { ls_jmanager-name }|,30
+                  |Salary: { ls_jmanager-salary }|.
+
+"Get Thomas' developers
+SKIP.
+WRITE: / |Thomas' developers:|.
+
+"line of manager table
+ASSIGN lt_manager[ name = 'Thomas' ] TO FIELD-SYMBOL(<ls_thomas>).
+LOOP AT ls_team-managers\my_employee[ <ls_thomas> ]
+        ASSIGNING FIELD-SYMBOL(<ls_emp>).
+  WRITE: / |Employee name: { <ls_emp>-name }|.
+ENDLOOP.
+
+*cl_demo_output=>display( time ).
+*---Strings
+SELECT * FROM scarr INTO TABLE @DATA(lt_scarr).
+cl_demo_output=>display( | Carrier: { lt_scarr[ carrid = 'LH' ]-carrname }| ).
+
+*--Concatenation
+DATA(lv_out) = |Hello| & | | & |world|.
+*---Width/Alignment/Padding
+WRITE / |{ 'Left'     WIDTH = 20 ALIGN = LEFT   PAD = '0' }|.
+WRITE / |{ 'Centre'   WIDTH = 20 ALIGN = CENTER PAD = '0' }|.
+WRITE / |{ 'Right'    WIDTH = 20 ALIGN = RIGHT  PAD = '0' }|.
+
+*--Case
+WRITE / |{ 'Text' CASE = (cl_abap_format=>c_raw) }|.
+WRITE / |{ 'Text' CASE = (cl_abap_format=>c_upper) }|.
+WRITE / |{ 'Text' CASE = (cl_abap_format=>c_lower) }|.
+
+*--ALPHA conversion
+DATA(lv_vbeln) = '0000012345'.
+WRITE / |{ lv_vbeln  ALPHA = OUT }|.     "or use alpha = in to go in other direction
+lv_vbeln = |{ lv_vbeln ALPHA = OUT }|.
+
+*--Date conversion
+DATA: pa_date TYPE sy-datum VALUE '20150101'.
+WRITE / |{ pa_date DATE = ISO }|.           "date format yyyy-mm-dd
+WRITE / |{ pa_date DATE = USER }|.          "as per user settings
+WRITE / |{ pa_date DATE = ENVIRONMENT }|.   "formatting setting of language environment
+
+*--Filter the records in a table based on records in another table.
+*--As a prerequisite, the filtered table must have a sorted or a hash key (primary or secondary)
+TYPES: BEGIN OF ty_filter,
+         cityfrom TYPE spfli-cityfrom,
+         cityto   TYPE spfli-cityto,
+         f3       TYPE i,
+       END OF ty_filter,
+       ty_filter_tab TYPE HASHED TABLE OF ty_filter
+WITH UNIQUE KEY cityfrom cityto.
+DATA: lt_splfi TYPE STANDARD TABLE OF spfli.
+
+SELECT * FROM spfli APPENDING TABLE lt_splfi.
+
+DATA(lt_filter) = VALUE ty_filter_tab( f3 = 2
+                          ( cityfrom = 'NEW YORK'  cityto  = 'SAN FRANCISCO' )
+             ( cityfrom = 'FRANKFURT' cityto  = 'NEW YORK' )  ).
+DATA(lt_myrecs) = FILTER #( lt_splfi IN lt_filter WHERE cityfrom = cityfrom AND cityto = cityto ).
+
+"Output filtered records
+LOOP AT lt_myrecs ASSIGNING FIELD-SYMBOL(<ls_rec>).
+  WRITE: / <ls_rec>-carrid,8 <ls_rec>-cityfrom,30
+           <ls_rec>-cityto,45 <ls_rec>-deptime.
+ENDLOOP.
+
+*--New Boolean Function
+IF boolc( 1 = 2 ) = abap_false.
+  cl_demo_output=>display_text( 'yes' ).
+ELSE.
+  cl_demo_output=>display_text( 'no' ).
+ENDIF.
+
+IF xsdbool( 1 = 2 ) = abap_false.
+  cl_demo_output=>display_text( 'yes' ).
+ELSE.
+  cl_demo_output=>display_text( 'no' ).
+ENDIF.
+
+*--CORRESPONDING
+DATA:
+  BEGIN OF struct1,
+    col1 TYPE i VALUE 11,
+    col2 TYPE i VALUE 12,
+  END OF struct1.
+
+DATA:
+  BEGIN OF struct2,
+    col2 TYPE i VALUE 22,
+    col3 TYPE i VALUE 23,
+  END OF struct2.
+*---Since the RHS does not know anything of the LHS, component col3 of struct2 does not keep its former value but is initialized.
+struct2 = CORRESPONDING #( struct1 ).
+
+DATA itab7 TYPE TABLE OF i.
+*---Again, the RHS does not know the LHS and the result of the second assignment is three lines containing 4, 5, 6.
+itab7 = VALUE #( ( 1 ) ( 2 ) ( 3 ) ).
+itab7 = VALUE #( ( 4 ) ( 5 ) ( 6 ) ).
+
+*---make the LHS known to a RHS. he result of the expression is initialized with struct2 and then the evaluation takes place
+struct2 = CORRESPONDING #( BASE ( struct2 ) struct1 ).
+*---The result of the second expression is initialized with itab and then the other lines are added. After the second assignment, itab contains 1, 2, 3, 4, 5, 6.
+itab7 = VALUE #( ( 1 ) ( 2 ) ( 3 ) ).
+itab7 = VALUE #( BASE itab7 ( 4 ) ( 5 ) ( 6 ) ).
+*---You can also construct structures using BASE
+struct2 = VALUE #( BASE struct1  col3 = 33 ).
+*---GROUP BY clause for LOOP AT itab that is much more powerful than the SQL one
+DATA flights TYPE TABLE OF spfli WITH EMPTY KEY.
+SELECT * FROM  spfli
+         WHERE carrid = 'LH'
+         INTO TABLE @flights.
+
+DATA members LIKE flights.
+LOOP AT flights INTO DATA(flight)
+     GROUP BY ( carrier = flight-carrid cityfr = flight-cityfrom )
+              ASCENDING
+              ASSIGNING FIELD-SYMBOL(<group>).
+  CLEAR members.
+  LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<flight>).
+    members = VALUE #( BASE members ( <flight> ) ).
+  ENDLOOP.
+  cl_demo_output=>write( members ).
+ENDLOOP.
+cl_demo_output=>display( ).
+*----Or same thing can be done this way
+TYPES t_flights LIKE flights.
+DATA: out2 TYPE REF TO if_demo_output.
+
+out2 = REDUCE #( INIT o = cl_demo_output=>new( )
+                      FOR GROUPS <group1> OF flight1 IN flights
+                      GROUP BY ( carrier = flight1-carrid cityfr = flight1-cityfrom ) ASCENDING
+                      LET members1 = VALUE t_flights( FOR m IN GROUP <group1> ( m ) )
+                      IN NEXT o = o->write( members1 ) ).
+out2->display( ).
