@@ -1,0 +1,158 @@
+CLASS zcl_amdp_simple_00 DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    INTERFACES: if_amdp_marker_hdb.
+    TYPES: BEGIN OF ty_customer_info,
+             customer_id        TYPE kna1-kunnr,
+             customer_name      TYPE kna1-name1,
+             currency_code      TYPE vbak-waerk,
+             total_gross_amount TYPE vbak-netwr,
+             undefined          TYPE i,
+           END OF ty_customer_info,
+           BEGIN OF ty_output,
+             name1 TYPE kna1-name1,
+           END OF ty_output,
+           BEGIN OF ty_orders,
+             mandt TYPE vbak-mandt,
+             vbeln TYPE vbak-vbeln,
+             kunnr TYPE vbak-kunnr,
+             name1 TYPE kna1-name1,
+             ort01 TYPE kna1-ort01,
+           END OF ty_orders,
+           BEGIN OF ty_sflight,
+             carrid TYPE sflight-carrid,
+             price  TYPE sflight-price,
+           END OF ty_sflight,
+           BEGIN OF ty_flight_name,
+             carrid   TYPE sflight-carrid,
+             carrname TYPE scarr-carrname,
+             price    TYPE sflight-price,
+           END OF ty_flight_name,
+           BEGIN OF ty_carriers,
+             mandt  TYPE scarr-mandt,
+             carrid TYPE scarr-carrid,
+           END OF ty_carriers,
+           tt_costomer_info TYPE STANDARD TABLE OF ty_customer_info,
+           tt_output        TYPE STANDARD TABLE OF ty_output,
+           tt_kna1          TYPE STANDARD TABLE OF kna1,
+           tt_orders        TYPE STANDARD TABLE OF ty_orders,
+           tt_sflight       TYPE STANDARD TABLE OF ty_sflight,
+           tt_flight_name   TYPE STANDARD TABLE OF ty_flight_name,
+           tt_carriers      TYPE STANDARD TABLE OF scarr.
+    DATA: r_kunnr TYPE RANGE OF kna1-kunnr,
+          r_city  TYPE RANGE OF kna1-ort01.
+
+
+
+    METHODS: get_customer_info EXPORTING VALUE(et_customer_info) TYPE tt_costomer_info RAISING cx_amdp_error,
+      get_company_name IMPORTING VALUE(lv_number) TYPE i
+                       EXPORTING VALUE(et_output) TYPE tt_output RAISING cx_amdp_error,
+      call_procedure,
+      execute_selopt IMPORTING VALUE(lv_where) TYPE string
+                               VALUE(lv_client) TYPE string
+                     EXPORTING VALUE(lt_kna1) TYPE tt_kna1
+                               VALUE(lt_orders) TYPE tt_orders,
+      get_flight_name EXPORTING VALUE(lt_flight_name) TYPE tt_flight_name,
+      get_carriers    CHANGING VALUE(lt_carriers) TYPE tt_carriers.
+    CLASS-METHODS: get_flight_price IMPORTING VALUE(iv_curr)   TYPE char3
+                                    EXPORTING VALUE(lt_flight) TYPE tt_sflight.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+CLASS zcl_amdp_simple_00 IMPLEMENTATION.
+  METHOD call_procedure.
+    DATA(lv_where) = cl_shdb_seltab=>combine_seltabs(
+                         it_named_seltabs  = VALUE #( ( name = 'R_KUNNR' dref = REF #( r_kunnr ) )
+                                                      ( name = 'R_CITY' dref = REF #( r_city ) ) )
+                         iv_client_field   = 'MANDT'
+                     ).
+    me->execute_selopt(
+      EXPORTING
+        lv_where  = lv_where
+        lv_client = '200'
+      IMPORTING
+        lt_kna1   = DATA(lt_kna1)
+        lt_orders = DATA(lt_orders)
+    ).
+
+  ENDMETHOD.
+  METHOD execute_selopt BY DATABASE PROCEDURE
+                        FOR HDB
+                        LANGUAGE SQLSCRIPT
+                        OPTIONS READ-ONLY
+                        USING kna1 vbak.
+    --Get customers
+    lt_kna1 = APPLY_FILTER (kna1, :lv_where);
+
+    --Get Orders
+    itab = SELECT a.mandt, a.vbeln, a.kunnr, b.name1, b.ort01
+           FROM vbak AS a INNER JOIN kna1 AS b
+           on a.kunnr = b.kunnr AND
+              a.MANDT = b.MANDT;
+    lt_orders = APPLY_FILTER (:itab, :lv_where);
+  ENDMETHOD.
+  METHOD get_customer_info BY DATABASE PROCEDURE
+                           FOR HDB
+                           LANGUAGE SQLSCRIPT
+                           OPTIONS READ-ONLY
+                           USING kna1 vbak.
+    DECLARE lv_zero INTEGER;
+    lv_zero := 1;
+
+    et_customer_info = SELECT a.kunnr AS customer_id,
+                              a.name1 as customer_name,
+                              b.waerk AS currency_code,
+                              sum( b.netwr ) as total_gross_amount,
+                              ( 1 / :lv_zero ) as undefined
+                       FROM kna1 AS a INNER JOIN vbak AS b
+                       ON b.kunnr = a.kunnr
+                       GROUP BY a.kunnr, a.name1, b.waerk
+                       ORDER BY a.kunnr;
+  ENDMETHOD.
+  METHOD get_company_name BY DATABASE PROCEDURE
+                          FOR HDB
+                          LANGUAGE SQLSCRIPT
+                          OPTIONS READ-ONLY
+                          USING kna1.
+    --SQL Script coding
+et_output = SELECT top :lv_number name1
+            FROM kna1;
+  ENDMETHOD.
+  METHOD get_flight_price BY DATABASE PROCEDURE
+                          FOR HDB
+                          LANGUAGE SQLSCRIPT
+                          OPTIONS READ-ONLY
+                          USING sflight.
+    it_temp = SELECT * FROM sflight;
+    lt_flight = SELECT carrid, SUM (price) AS price
+                 FROM :it_temp
+                 WHERE currency = :iv_curr
+                 GROUP BY carrid;
+  ENDMETHOD.
+  METHOD get_flight_name BY DATABASE PROCEDURE
+                         FOR HDB
+                         LANGUAGE SQLSCRIPT
+                         OPTIONS READ-ONLY
+                         USING scarr
+                            zcl_amdp_simple_00=>get_flight_price.
+    CALL "ZCL_AMDP_SIMPLE_00=>GET_FLIGHT_PRICE" ( iv_curr => 'USD', lt_flight => :lt_flight );
+
+    lt_flight_name = SELECT a.carrid, b.carrname, a.price
+                     FROM :lt_flight AS a LEFT OUTER JOIN scarr AS b
+                     on a.carrid = b.carrid;
+  ENDMETHOD.
+  METHOD get_carriers BY DATABASE PROCEDURE
+                      FOR HDB
+                      LANGUAGE SQLSCRIPT
+                      OPTIONS READ-ONLY
+                      USING scarr.
+    lt_carriers = SELECT a.*
+                  FROM scarr as a INNER JOIN :lt_carriers AS b
+                  on a.mandt = b.mandt AND
+                     a.carrid = b.carrid;
+  ENDMETHOD.
+ENDCLASS.
