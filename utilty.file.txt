@@ -1,0 +1,398 @@
+route add -p 10.34.32.130 mask 255.255.255.255 10.34.38.1
+
+route add -p 10.34.155.15 mask 255.255.255.255 10.34.38.1
+
+route add -p 10.34.32.132 mask 255.255.255.255 10.34.38.1
+
+S.No : S0011372816          Pass: Locked@123
+S0013911133    H1ghf!ve
+S0015798333    UWDS0DI7
+
+director -repository jar:file:/C:/SAPWebIDE/updatesite.zip!/ -installIU com.sap.webide.orionplugin.feature.feature.group -destination c:\SAPWebIDE\eclipse
+
+chrome.exe --disable-web-security
+SHD 100 Conagra11
+SHD 110 Conagra09
+SHQ     Conagra09
+SHP     Conagra09
+FFR     Conagra5
+FFS     Conagra5
+FFT     Conagra4
+FF2     Conagra13
+FF6     Conagra7
+FF9     Conagra9
+SPD     Conagra5
+SPQ     Conagra4
+SPP     Conagra5
+PRS     Conagra3
+ 
+	\\10.34.156.166\SAP_downloads 	       1400712456
+  
+	Administrator
+fujitsu#1	
+call myproc(intab=>mytab, i=>2, outtab =>?);
+SAP_BC_DWB_ABAPDEVELOPER
+SAP_BC_DWB_WBDISPLAY 
+
+&sap-ui-xx-fakeOS=ios
+
+409132
+172517
+171698
+165583
+188665
+404066
+171273
+183347
+167936
+358360
+
+sap-language=EN&PERNR=0000004970
+
+/interface/outbound/zgww
+metadatalog_0412               
+
+zgmetadata id 144
+ZGDOCTYPES to get report id
+Z_RFC_GET_METADATA
+
+
+ 
+https://easus.consulting-fujitsu.com/Farmland/FFE/PMDeliverablesInternal/Forms/AllItems.aspx?RootFolder=%2fFarmland%2fFFE%2fPMDeliverablesInternal%2fFujitsu%2dFarmland%20Operations%20Run%20Book%2fEscalation%20Matrix%20and%20Team%20Contact%20Details%2fWork%20Log&FolderCTID=&View=%7bB559751D%2d495E%2d4DB8%2dA586%2d0FBAF2FD1607%7d	 
+
+
+
+	 
+
+http://FC-P01-ECC04.india.rapidigm.com:8000/sap/bc/webdynpro/sap/ztest_wf?&PERNR=4970&TNO=123
+
+ZXODEVAL1 + ZOVERAGE
+ 
+ZCL_DM_GPR_COND	 
+  
+	A621	 
+a630
+ 
+	A619	 
+ a654
+
+
+nana 
+ 
+816-243-2716	 
+
+
+
+958
+
+*---------------------------------------------------------------------*
+*       FORM KOBED_958                                                *
+*---------------------------------------------------------------------*
+*       This condition will check the quantity of this item against
+*         the accumulated quantity for the pricing condition.
+*       If the quantity is less than the cap (MXKBAS) we will:
+*       1. Allow the condition to apply
+*       2. Ensure the entire quantity is applied
+*---------------------------------------------------------------------*
+*  -----> komk  segment voucher head
+*  -----> komp  segment voucher item
+*  -----> komt1 segment calculation plan
+*  -----> komt2 segment condition access
+*  -----> xkomv table voucher conditions
+*  -----> xkonp table conditions (already on order)
+*---------------------------------------------------------------------*
+* CRW 6 Oct 2003 | Condition check did not take into account line items
+*                | and could pick up wrong sales deal to compare volume
+*                | to.  Fixed this and limited code running for other
+*                | condition types that have been added to the access
+*---------------------------------------------------------------------*
+
+FORM KOBED_958.
+  LOCAL: XKONP, KONV, KONH .
+
+  TABLES: A893, A698, A675, ZCUST, KONA.
+
+  DATA: L_SUM_KAWRT LIKE S071-KAWRT,
+        L_MXKBAS    LIKE S071-KAWRT,
+        L_KNUMH     LIKE KONP-KNUMH.
+  DATA : X_KNUMH LIKE KOMV-KNUMH.
+* begin - copied from requirements 2 and 939
+  SY-SUBRC = 4.
+  IF KOMP-KPOSN NE 0.                  "Condition item number
+    CHECK: KOMP-PRSFD = 'X'.           "carry out pricing
+    CHECK: KOMP-KZNEP = SPACE.         "Condition exclusion indicator
+  ENDIF.
+*{   INSERT         DV4K918616                                        5
+*change added TPSPNAI
+  IF KOMT1-KSCHL = 'ZFFX'.
+          SELECT SINGLE KUNNR INTO ZCUST-KUNNR
+          FROM ZCUST
+          WHERE KUNNR = KOMK-KUNNR.
+        IF SY-SUBRC = 0 .
+          SY-SUBRC = 4 ."if listed then should not receive ABC pricing
+          EXIT.
+          else.
+          sy-subrc = 0.
+          exit.
+        ENDIF.
+  ENDIF.
+*}   INSERT
+  IF KOMT1-KSCHL = 'ZFF9'.
+    SELECT SINGLE PSTYV
+      INTO ZVITEMCATG-PSTYV
+      FROM ZVITEMCATG
+      WHERE PSTYV = KOMP-PSTYV.
+    IF SY-SUBRC = 0.
+      SY-SUBRC = 4.
+      EXIT.
+    ENDIF.
+  ENDIF.
+  SY-SUBRC = 0.
+* end - copied from requirements 2 and 939
+
+* ******* We only care about this for ABCs ******* *
+* We SHOULD look to table t6b2f to get a distinct list of valid kschl
+*   values and check it's one of them, and ignore others, but that's
+*   one more table access we're using then and this gets called quite
+*   a lot with all the conditions that are part of the sequence now.
+*{   REPLACE        DV4K918004                                        2
+*  CHECK: KOMT1-KSCHL = 'ZFB5' OR KOMT1-KSCHL = 'ZFF9'.
+  CHECK: KOMT1-KSCHL = 'ZFB5' OR KOMT1-KSCHL = 'ZFF9'." OR KOMT1-KSCHL = 'ZFFX'.
+*}   REPLACE
+
+  CLEAR: L_SUM_KAWRT, L_MXKBAS, L_KNUMH.
+
+* get the condition id for the current condition
+  SELECT SINGLE KNUMH INTO L_KNUMH
+         FROM  KONV
+         WHERE KNUMV = KOMK-KNUMV
+           AND KPOSN = KOMP-KPOSN
+           AND KSCHL = KOMT1-KSCHL.
+
+* check that this condition record is for this key combination
+  IF NOT L_KNUMH IS INITIAL.
+    SELECT SINGLE KOTABNR INTO KONH-KOTABNR
+    FROM KONH
+    WHERE KNUMH = L_KNUMH.
+
+    IF KONH-KOTABNR NE KOMT2-KOTABNR.
+      CLEAR: L_KNUMH.
+    ENDIF.
+  ENDIF.
+
+* if we couldn't find the condition, try by looking in the "a" tables
+  IF L_KNUMH IS INITIAL.
+    CASE KOMT2-KOTABNR.
+      WHEN '893'.
+        SELECT SINGLE KNUMH INTO L_KNUMH
+               FROM  A893
+               WHERE KAPPL EQ KOMK-KAPPL
+                 AND KSCHL EQ KOMT1-KSCHL
+                 AND VKORG EQ KOMK-VKORG
+                 AND VTWEG EQ KOMK-VTWEG
+                 AND VKBUR EQ KOMK-VKBUR
+                 AND VKGRP EQ KOMK-VKGRP
+                 AND MATNR EQ KOMP-MATNR
+                 AND DATBI GE KOMK-PRSDT
+                 AND DATAB LE KOMK-PRSDT.
+      WHEN '698'.
+        SELECT SINGLE KNUMH INTO L_KNUMH
+               FROM  A698
+               WHERE KAPPL EQ KOMK-KAPPL
+                 AND KSCHL EQ KOMT1-KSCHL
+                 AND VKORG EQ KOMK-VKORG
+                 AND VTWEG EQ KOMK-VTWEG
+                 AND VKBUR EQ KOMK-VKBUR
+                 AND VKGRP EQ KOMK-VKGRP
+                 AND KUNNR EQ KOMK-KUNNR
+                 AND MATNR EQ KOMP-MATNR
+                 AND DATBI GE KOMK-PRSDT
+                 AND DATAB LE KOMK-PRSDT.
+      WHEN '675'.
+        SELECT SINGLE KNUMH INTO L_KNUMH
+               FROM  A675
+               WHERE KAPPL EQ KOMK-KAPPL
+                 AND KSCHL EQ KOMT1-KSCHL
+                 AND VKORG EQ KOMK-VKORG
+                 AND VTWEG EQ KOMK-VTWEG
+                 AND VKBUR EQ KOMK-VKBUR
+                 AND VKGRP EQ KOMK-VKGRP
+                 AND ZPAZT EQ KOMK-ZPAZT
+                 AND MATNR EQ KOMP-MATNR
+                 AND DATBI GE KOMK-PRSDT
+                 AND DATAB LE KOMK-PRSDT.
+    ENDCASE.
+  ENDIF.
+
+* if we still cannot find the condition, we can't really check
+  IF L_KNUMH IS INITIAL.
+*    sy-subrc = 4.
+    EXIT.
+  ENDIF.
+
+* to override the max, we need to find this row in xkonp
+  CLEAR XKONP.
+  READ TABLE XKONP WITH KEY KONP-KNUMH = L_KNUMH.
+
+* Get maximum condition base value
+  IF SY-SUBRC = 0.
+*    l_tabix = sy-tabix.
+    L_MXKBAS = XKONP-KONP-MXKBAS / 10.
+  ELSE.
+    SELECT SINGLE MXKBAS INTO L_MXKBAS
+           FROM  KONP
+           WHERE KNUMH = L_KNUMH.
+  ENDIF.
+
+* if there is no limit, then allow it and quit processing
+  IF L_MXKBAS LE 0.
+    SY-SUBRC = 0.
+    EXIT.
+  ENDIF.
+
+*   Get the current utilization
+  SELECT SUM( KAWRT ) INTO L_SUM_KAWRT FROM S071
+   WHERE SSOUR EQ SPACE
+     AND VRSIO EQ '000'
+     AND KNUMH EQ L_KNUMH.
+
+*   if this condition is already on the order, subtract its qty
+  SELECT SINGLE KAWRT INTO KONV-KAWRT
+         FROM  KONV
+         WHERE KNUMV = KOMK-KNUMV
+           AND KNUMH = L_KNUMH.
+  IF SY-SUBRC = 0.
+    SUBTRACT KONV-KAWRT FROM L_SUM_KAWRT.
+  ENDIF.
+
+*   If current condition is exceeded disallow this condition
+  DIVIDE L_SUM_KAWRT BY 10.
+  IF L_SUM_KAWRT GE L_MXKBAS.
+    SY-SUBRC = 4.
+    EXIT.
+  ENDIF.
+
+  SY-SUBRC = 0. "everything's good.  make sure we allow it.
+
+*---------------------------------------------------------------------*
+* Requirment that applies to ZFB5 and ZFF9 pricing condition records . *
+*That will prevent the pricing condition to be applied to the item     *
+*If the condition is a sales deal , the sales deal is an ABC(type Z023)*
+*the sold-to listed in ZCUST table then it should not receive the      *
+*ABC pricing
+*-----------------------------------------------------------------------
+* AUTHOR           | Celine Barve(TPSPC4B)                             |
+* CREATION DATE    | 02/08/2005                                        |
+*-----------------------------------------------------------------------
+
+*{   REPLACE        DV4K918004                                        1
+*  CHECK :  KOMT1-KSCHL = 'ZFB5' OR KOMT1-KSCHL = 'ZFF9'.
+  CHECK :  KOMT1-KSCHL = 'ZFB5' OR KOMT1-KSCHL = 'ZFF9'." or KOMT1-KSCHL = 'ZFFX'.
+*}   REPLACE
+**Check whether condition is on a sales deal
+ IF NOT L_KNUMH IS INITIAL .
+    SELECT SINGLE KNUMA_AG INTO KONH-KNUMA_AG
+            FROM  KONH
+            WHERE KNUMH = L_KNUMH.
+    IF SY-SUBRC = 0 .
+      SELECT SINGLE BOART  INTO KONA-BOART
+          FROM KONA
+          WHERE KNUMA = KONH-KNUMA_AG .
+      IF SY-SUBRC = 0 .
+**check sales deal is an ABC (of type Z023)
+*{   REPLACE        DV4K918288                                        3
+*        CHECK KONA-BOART = 'Z023'.
+        CHECK KONA-BOART = 'Z023' OR KONA-BOART = 'ZNOI'
+         OR KONA-BOART = 'ZVOI'.
+*}   REPLACE
+**check sold to is listed in the custom table ZCUST if so then pricing
+**condiiton ZFB5 and ZFF9 should be prevented
+        SELECT SINGLE KUNNR INTO ZCUST-KUNNR
+          FROM ZCUST
+           WHERE KUNNR = KOMK-KUNNR.
+        IF SY-SUBRC = 0 .
+          SY-SUBRC = 4 ."if listed then should not receive ABC pricing
+          EXIT.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+*{   INSERT         DV4K918616                                        4
+
+*}   INSERT
+
+  SY-SUBRC = 0 .  " if the condition is not  satified then allow
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+*       FORM KOBEV_958                                                *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+FORM KOBEV_958.
+* this form doesn't get called during re-pricing.  it seems to get
+* called when the order is opened and when opening the pricing screen
+ENDFORM.
+
+
+
+*-------syco email in ZSDREP_DOTPL
+DATA: lv_global        LIKE  rlgrap-filename,  " Global Filename
+        lv_filedata(1500) TYPE  c,
+        lv_zzcws         TYPE  i,
+*---begin of change TPSPNAI
+        r_vari TYPE RANGE OF vari-variant.
+*---end of change TPSPNAI
+
+  IF it_final[] IS INITIAL.
+*---begin of change TPSPNAI
+*--trigger mail to EDI if no data found
+    IF sy-batch = 'X'.
+      SELECT sign opti low high FROM tvarvc
+          INTO TABLE r_vari
+          WHERE name EQ 'ZSD_DOT_VARI' AND
+                low = sy-slset.
+      IF sy-subrc EQ 0.
+        zcl_syco_dot_email=>send_mail( ).
+      ENDIF.
+    ENDIF.
+*---end of change TPSPNAI
+    SKIP.
+    WRITE: / '***** No record found *****'.
+    SKIP.
+  ENDIF.
+
+
+Customer   R3 Name               Wrong Value         BW Value
+0000447704 REINHART LOUISVILLE                       REINHART
+
+
+
+
+bw tRANSFORMATIONS;
+
+0H8A75ZOU8IMKR62BNYWG3JIV7KGEX8A
+0JEHE4PTBY0FJMCRW05NXYMDHIVXLKWB
+
+
+
+
+ZIPBB_THK_AGR
+ZIPBB_CONTRACT_DETAILS_1
+ZIPBB_CONTRACT_DETAILS_2
+ZIPBB_CONTRACT_DETAILS_5
+
+ZIPBB_CONF_ADV
+ZIPBB_CON_PRICE
+ZIPBB_FARM_LAND
+ZIPBB_DST_PICKUP
+ZIPBB_ANY_VARIANCE
+ZIPBB_CLAIM_SUBMISSION_2
+ZIPBB_CLAIM_SUBMISSION_3
+
+R000000218 ZABB
+R000001644 ZNOI
+
+ZIPBB_CONTRACT_DETAILS_1_NOI
+ZIPBB_CONTRACT_DETAILS_2_NOI
